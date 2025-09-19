@@ -42,6 +42,7 @@ src/main/resources/keystore/
 **/truststore/
 certs/
 crl/
+cert/src/main/resources/revoked/
 
 # key file
 *.pem
