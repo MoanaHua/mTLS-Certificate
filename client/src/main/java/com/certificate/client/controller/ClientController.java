@@ -1,6 +1,5 @@
 package com.certificate.client.controller;
 
-
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 
@@ -18,7 +17,6 @@ import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
 import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SNIHostName;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.TrustManagerFactory;
@@ -34,7 +32,7 @@ public class ClientController {
 	   @Value("${SSL_TRUSTSTORE_PASSWORD}")
 	   private String trustStorePassword;
 	   
-	   @Value("${TARGET_SERVER_HOST:server}")
+	   @Value("${TARGET_SERVER_HOST:localhost}")
 	   private String targetHost;
 	   
 	   @Value("${TARGET_SERVER_PORT:8443}")
@@ -83,10 +81,14 @@ public class ClientController {
 	   private Mono<ResponseEntity<String>> performMtlsRequest(String keyStorePath, String keyStorePassword) {
 	       try {
 	           WebClient webClient = createMtlsWebClient(keyStorePath, keyStorePassword);
-	           String uri = "https://127.0.0.1:" + targetPort + "/";
+	           String uri = "https://localhost:" + targetPort + "/";
 	           
 	           return webClient.get()
 	                   .uri(uri)
+	                   // Tell server close the connection once received the response
+	                   .headers(h -> h.set(HttpHeaders.CONNECTION, "Close the connection!!!"))
+	                   
+	                   // Start from here, create TCP, then prepare to establish TLS
 	                   .retrieve()
 	                   .toEntity(String.class)
 	                   .doOnSuccess(r -> System.out.println("Success: " + r.getStatusCode()))
@@ -125,15 +127,15 @@ public class ClientController {
 	               .build();
 	       
 	       // Reactor Netty HttpClient
+	       // Specify the target address (prepare to establish a TCP Socket Connection; no data is transmitted at the time)
 	       HttpClient httpClient = HttpClient.create()
-	               .remoteAddress(() -> new InetSocketAddress("127.0.0.1", targetPort))
+	               .remoteAddress(() -> new InetSocketAddress(targetHost, targetPort))
 	               .secure(ssl -> ssl
 	                       .sslContext(sslContext)
 	                       .handlerConfigurator(h -> {
 	                           SSLEngine engine = h.engine();
 	                           SSLParameters params = engine.getSSLParameters();
 	                           params.setEndpointIdentificationAlgorithm("HTTPS");
-	                           params.setServerNames(java.util.List.of(new SNIHostName(targetHost))); // SNI = server
 	                           engine.setSSLParameters(params);
 	                       })
 	               )
@@ -143,4 +145,4 @@ public class ClientController {
 	               .clientConnector(new ReactorClientHttpConnector(httpClient))
 	               .build();
 	   }
-	}
+}
