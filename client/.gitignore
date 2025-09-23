@@ -42,7 +42,7 @@ src/main/resources/keystore/
 certs/
 crl/
 
-# key file
+### key file
 *.pem
 *.crt
 *.cer
@@ -50,3 +50,6 @@ crl/
 *.p12
 *.jks
 *.csr
+
+###
+*.bat
